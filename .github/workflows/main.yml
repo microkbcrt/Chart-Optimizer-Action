@@ -1,0 +1,52 @@
+name: Run Chart Optimizer
+
+# 触发条件：手动触发 (点击按钮运行)
+on:
+  workflow_dispatch:
+
+jobs:
+  build-and-run:
+    runs-on: ubuntu-latest # 使用最新的 Ubuntu 服务器
+
+    steps:
+      # 1. 检出代码 (把你的仓库文件下载到服务器)
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. 安装 jsoncpp 库 (环境配置)
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libjsoncpp-dev
+
+      # 3. 编译程序 (使用你提供的编译命令)
+      - name: Compile Optimizer
+        run: |
+          g++ optimizer.cpp -o optimizer -ljsoncpp -O3
+          chmod +x optimizer
+
+      # 4. 运行优化器 (自动扫描 raw_charts 文件夹下的所有 json)
+      - name: Run Optimization
+        run: |
+          # 创建输出文件夹
+          mkdir -p optimized_charts
+          
+          # 遍历 raw_charts 文件夹里的所有 .json 文件
+          # 如果你的谱面不在 raw_charts 文件夹，请修改下面的路径
+          for file in raw_charts/*.json; do
+            if [ -f "$file" ]; then
+              filename=$(basename "$file")
+              echo "正在优化: $filename ..."
+              
+              # 运行你的工具
+              ./optimizer "$file" "optimized_charts/$filename"
+            fi
+          done
+
+      # 5. 上传结果 (把生成的文件打包让你下载)
+      - name: Upload Results
+        uses: actions/upload-artifact@v4
+        with:
+          name: Optimized-Charts-Pack
+          path: optimized_charts/
+          retention-days: 5 # 文件保留5天
